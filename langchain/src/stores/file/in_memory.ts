@@ -10,7 +10,7 @@ import { BaseFileStore } from "../../schema/index.js";
 export class InMemoryFileStore extends BaseFileStore {
   lc_namespace = ["langchain", "stores", "file", "in_memory"];
 
-  private files: Map<string, string> = new Map();
+  files: Map<string, string> = new Map();
 
   /**
    * Retrieves the contents of a file given its path. If the file does not
@@ -24,6 +24,10 @@ export class InMemoryFileStore extends BaseFileStore {
       throw new Error(`File not found: ${path}`);
     }
     return contents;
+  }
+
+  async getFiles(): Promise<Map<String, String>> {
+      return this.files
   }
 
   /**

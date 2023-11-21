@@ -2,7 +2,7 @@ import { LLMChain } from "../../chains/llm_chain.js";
 import { BaseChatModel } from "../../chat_models/base.js";
 import { VectorStoreRetriever } from "../../vectorstores/base.js";
 import { Tool } from "../../tools/base.js";
-
+import EventEmitter from "events";
 import { AutoGPTOutputParser } from "./output_parser.js";
 import { AutoGPTPrompt } from "./prompt.js";
 import {
@@ -54,6 +54,8 @@ export class AutoGPT {
   feedbackTool?: Tool;
 
   maxIterations: number;
+
+  eventEmitter = new EventEmitter()
 
   // Currently not generic enough to support any text splitter.
   textSplitter: TokenTextSplitter;
@@ -148,15 +150,19 @@ export class AutoGPT {
     while (loopCount < this.maxIterations) {
       loopCount += 1;
 
-      const { text: assistantReply } = await this.chain.call({
+      let { text: assistantReply } = await this.chain.call({
         goals,
         user_input,
         memory: this.memory,
         messages: this.fullMessageHistory,
       });
 
-      // Print the assistant reply
-      console.log(assistantReply);
+      assistantReply = assistantReply.replaceAll('```json', '').replaceAll('```', '')
+      const index = assistantReply.indexOf('{')
+      assistantReply = assistantReply.substring(index)
+
+      this.eventEmitter.emit('assistantReply', assistantReply)
+
       this.fullMessageHistory.push(new HumanMessage(user_input));
       this.fullMessageHistory.push(new AIMessage(assistantReply));
 
@@ -177,6 +183,7 @@ export class AutoGPT {
         } catch (e) {
           observation = `Error in args: ${e}`;
         }
+        this.eventEmitter.emit('observation', observation)
         result = `Command ${tool.name} returned: ${observation}`;
       } else if (action.name === "ERROR") {
         result = `Error: ${action.args}. `;
